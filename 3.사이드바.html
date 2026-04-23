@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="UTF-8">
+<title>에디터 > 사이드바 (탭 레일) | Gency 기획서</title>
+<link rel="stylesheet" as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #fff;
+    color: #181b1e;
+    padding: 28px 32px 48px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ─── Chapter / Screen Path ─── */
+  .doc-meta {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    border: 1px solid #d5d5d5;
+    margin-bottom: 28px;
+  }
+  .doc-meta .label {
+    padding: 8px 14px;
+    font-weight: 600;
+    font-size: 12px;
+    border-right: 1px solid #d5d5d5;
+    border-bottom: 1px solid #d5d5d5;
+    display: flex; align-items: center;
+  }
+  .doc-meta .label.chapter { background: #fff; color: #111; }
+  .doc-meta .label.path { background: #b5e4a7; color: #111; border-bottom: none; }
+  .doc-meta .value {
+    padding: 8px 14px;
+    font-size: 12px;
+    border-bottom: 1px solid #d5d5d5;
+    display: flex; align-items: center;
+  }
+  .doc-meta .value:last-child { border-bottom: none; }
+
+  /* ─── Section wrapper ─── */
+  .section { margin-bottom: 56px; }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    letter-spacing: -0.2px;
+  }
+  .section-subtitle {
+    font-size: 12px;
+    color: #8796a1;
+    margin-bottom: 18px;
+  }
+
+  /* ─── UI mockup area ─── */
+  .mockup-wrap {
+    background: #f4f6f8;
+    padding: 56px 32px 36px;
+    border: 1px solid #e6e8eb;
+    border-radius: 4px;
+    position: relative;
+    margin-bottom: 22px;
+  }
+  .mockup-canvas {
+    position: relative;
+    background: #fff;
+    border: 1px solid #eef0f2;
+    width: 44px;    /* 한눈에 들어오는 크기 · 원본 64px 대비 69% */
+    margin: 0 auto; /* 중앙 정렬 */
+    /* height는 이미지가 결정 (min-height 없음 — 박스 튀어나감 방지) */
+  }
+  .mockup-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 64 / 974;  /* 탭 레일 원본 비율 (64×974 PNG) */
+  }
+  .mockup-canvas svg.mockup-image { background: #fff; }
+  .mockup-canvas .grp { display: flex; align-items: center; gap: 6px; }
+  .mockup-canvas .btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: 6px;
+    font-weight: 600; font-size: 12px; color: #181b1e;
+    background: #fff;
+  }
+  .mockup-canvas .btn.icon { padding: 6px; }
+  .mockup-canvas .btn.primary {
+    background: #0a8ff5; color: #fff;
+    padding: 6px 12px; height: 34px;
+  }
+  .mockup-canvas .divider {
+    width: 1px; height: 18px; background: #dadfe2; opacity: 0.6;
+    margin: 0 4px;
+  }
+  .mockup-canvas .code { color: #8796a1; font-weight: 500; font-size: 12px; }
+  .mockup-canvas .title { color: #181b1e; font-weight: 500; font-size: 12px; max-width: 200px; }
+  .mockup-canvas .status-tag {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: #fbf2dc; color: #ff9200;
+    padding: 0 6px; border-radius: 4px; height: 20px;
+    font-weight: 600; font-size: 12px;
+  }
+  .mockup-canvas .status-box {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 0 8px; height: 34px; border-radius: 6px;
+  }
+  .mockup-canvas .zoom-group {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px; border-radius: 6px;
+    font-weight: 600;
+  }
+  .mockup-canvas .chev { color: #181b1e; font-size: 11px; }
+
+  /* ─── Number markers and area boxes ─── */
+  .area-box {
+    position: absolute;
+    border: 1.5px dashed #e74040;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  .area-box.blue { border-color: #2d8cde; }
+  .num {
+    position: absolute;
+    top: -11px;           /* 박스 상단 모서리에 걸침 (반지름 11) */
+    left: -8px;           /* 박스 좌측에 살짝 걸침 */
+    width: 22px; height: 22px;
+    background: #f37a2e;
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.12);
+    z-index: 2;
+  }
+
+  /* ─── Description table ─── */
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    border: 1px solid #111;
+  }
+  .spec-table thead th {
+    background: #111;
+    color: #fff;
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 12px;
+    border-right: 1px solid #333;
+  }
+  .spec-table thead th:last-child { border-right: none; }
+  .spec-table thead th.num-col { width: 54px; text-align: center; }
+  .spec-table td {
+    padding: 12px 14px;
+    vertical-align: top;
+    border-bottom: 1px solid #d5d5d5;
+    background: #fff;
+  }
+  .spec-table td.num-cell {
+    background-color: #f37a2e !important;
+    color: #fff !important;
+    font-weight: 700;
+    text-align: center;
+    width: 54px;
+    border-right: 1px solid #111;
+    font-size: 13px;
+  }
+  .spec-table td.num-cell.empty { background-color: #f37a2e !important; }
+  .spec-table td.num-cell.dash { background-color: #f37a2e !important; }
+  .spec-table tr:last-child td { border-bottom: none; }
+  .spec-table .cat {
+    font-weight: 700; margin-bottom: 6px;
+    display: block;
+  }
+  .spec-table ul { list-style: none; padding: 0; }
+  .spec-table li { padding: 2px 0; position: relative; padding-left: 14px; }
+  .spec-table li::before {
+    content: '•'; position: absolute; left: 0; color: #181b1e;
+  }
+  .spec-table li ul { padding-left: 14px; margin-top: 2px; }
+  .spec-table li ul li::before { content: '◦'; }
+
+  /* ─── Responsive matrix ─── */
+  .matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    border: 1px solid #d5d5d5;
+  }
+  .matrix th, .matrix td {
+    padding: 8px 12px;
+    border: 1px solid #d5d5d5;
+    text-align: center;
+    background: #fff;
+  }
+  .matrix th {
+    background: #f4f6f8;
+    font-weight: 600;
+  }
+  .matrix td:first-child, .matrix th:first-child {
+    text-align: left;
+  }
+  .matrix .yes { color: #00bf40; font-weight: 700; }
+  .matrix .no { color: #c9c9c9; }
+  .matrix .note { color: #0a8ff5; font-weight: 600; font-size: 11px; }
+
+  /* ─── Popup mockups ─── */
+  .popup-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .popup-card {
+    border: 1px solid #e6e8eb;
+    border-radius: 4px;
+    padding: 20px;
+    background: #f4f6f8;
+  }
+  .popup-card h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .popup-card .meta {
+    font-size: 11px;
+    color: #8796a1;
+    margin-bottom: 14px;
+  }
+  .popup-card .popup-mockup {
+    background: #fff;
+    border: 1px solid #dadfe2;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 0 12px rgba(91,105,115,0.08);
+    margin-bottom: 14px;
+  }
+  .popup-card .popup-mockup .input-guide {
+    font-size: 11px; color: #8796a1; margin-bottom: 4px;
+  }
+  .popup-card .popup-mockup .input-box {
+    background: #f9fafb; border: 1px solid #dadfe2;
+    border-radius: 6px; padding: 8px 10px;
+    font-size: 12px; margin-bottom: 10px;
+  }
+  .popup-card .popup-mockup .row {
+    padding: 8px 10px;
+    font-size: 12px;
+    border-bottom: 1px solid #f0f2f4;
+  }
+  .popup-card .popup-mockup .row:last-child { border-bottom: none; }
+  .popup-card .popup-mockup .row .status-tag {
+    display: inline-flex; align-items: center;
+    padding: 0 6px; border-radius: 4px; height: 20px;
+    font-weight: 600; font-size: 11px;
+  }
+  .popup-card .popup-mockup .row .tag-gray { background: #dadfe2; color: #8796a1; }
+  .popup-card .popup-mockup .row .tag-yellow { background: #fbf2dc; color: #ff9200; }
+  .popup-card .popup-mockup .row .tag-green { background: #e1f5ea; color: #00bf40; }
+  .popup-card .desc { font-size: 11.5px; line-height: 1.5; color: #3a4048; }
+
+  /* footer */
+  .foot {
+    font-size: 11px; color: #8796a1; text-align: right;
+    margin-top: 24px;
+  }
+
+  /* ══════════════════════════════════════════════════ */
+  /*  EDIT MODE UI                                      */
+  /* ══════════════════════════════════════════════════ */
+
+  /* Top toolbar */
+  .edit-toolbar {
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 999;
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 8px;
+    display: flex; gap: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    font-size: 12px;
+  }
+  .edit-toolbar button {
+    background: transparent;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background 0.15s;
+  }
+  .edit-toolbar button:hover { background: rgba(255,255,255,0.1); }
+  .edit-toolbar button.active { background: #f37a2e; color: #fff; }
+  .edit-toolbar button.primary { background: #0a8ff5; }
+  .edit-toolbar button.primary:hover { background: #0079d1; }
+  .edit-toolbar .sep { width: 1px; background: rgba(255,255,255,0.15); margin: 4px 2px; }
+  .edit-toolbar .hint {
+    color: rgba(255,255,255,0.5);
+    padding: 8px 10px;
+    font-size: 11px;
+    align-self: center;
+  }
+
+  /* File connection status */
+  .file-status {
+    position: fixed;
+    top: 72px; right: 16px;
+    z-index: 998;
+    background: #fff;
+    border: 1px solid #e6e8eb;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #8796a1;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    max-width: 420px;
+    text-align: right;
+  }
+  .file-status.connected {
+    border-color: #c8e5d4;
+    background: #f0fbf4;
+    color: #006627;
+  }
+  .file-status strong {
+    color: #181b1e;
+    font-weight: 600;
+  }
+  body:not(.edit-mode) .file-status { display: none; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1a1a1a; color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Restore banner */
+  .restore-banner {
+    position: fixed;
+    bottom: 24px; left: 24px;
+    background: #fff;
+    border: 1px solid #d5d5d5;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 12px;
+    display: none;
+    align-items: center; gap: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    z-index: 998;
+    max-width: 400px;
+  }
+  .restore-banner.show { display: flex; }
+  .restore-banner button {
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid #d5d5d5; background: #fff;
+  }
+  .restore-banner button.primary { background: #0a8ff5; color: #fff; border-color: #0a8ff5; }
+
+  /* Edit mode — editable hint */
+  body.edit-mode [contenteditable="true"]:hover {
+    outline: 1.5px solid rgba(10, 143, 245, 0.3);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  body.edit-mode [contenteditable="true"]:focus {
+    outline: 2px solid #0a8ff5;
+    outline-offset: 2px;
+    border-radius: 2px;
+    background: rgba(10, 143, 245, 0.04);
+  }
+
+  /* Edit mode — draggable markers */
+  body.edit-mode .num {
+    cursor: grab;
+    pointer-events: auto;
+  }
+  body.edit-mode .num:hover {
+    box-shadow: 0 0 0 3px rgba(243, 122, 46, 0.3), 0 2px 4px rgba(0,0,0,0.12);
+  }
+  body.edit-mode .num.dragging { cursor: grabbing; opacity: 0.85; }
+
+  body.edit-mode .area-box {
+    pointer-events: auto;
+    cursor: grab;
+  }
+  body.edit-mode .area-box.dragging { cursor: grabbing; opacity: 0.85; }
+
+  /* Resize handle — hover 시에만 표시 */
+  body.edit-mode .area-box::after {
+    content: '';
+    position: absolute;
+    right: -5px; bottom: -5px;
+    width: 10px; height: 10px;
+    background: #e74040;
+    border: 2px solid #fff;
+    border-radius: 2px;
+    cursor: nwse-resize;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  body.edit-mode .area-box:hover::after { opacity: 1; }
+  body.edit-mode .area-box.blue::after {
+    background: #2d8cde;
+  }
+
+  /* Delete button on markers (hover) */
+  body.edit-mode .num .del-btn,
+  body.edit-mode .area-box .del-btn {
+    position: absolute;
+    top: -8px; right: -8px;
+    width: 18px; height: 18px;
+    background: #1a1a1a;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    display: none;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    border: 2px solid #fff;
+    font-weight: 700;
+    line-height: 1;
+  }
+  body.edit-mode .num:hover .del-btn,
+  body.edit-mode .area-box:hover .del-btn {
+    display: flex;
+  }
+
+  /* View mode — hide all editing UI */
+  body:not(.edit-mode) .edit-toolbar .edit-only,
+  body:not(.edit-mode) .del-btn { display: none !important; }
+  body:not(.edit-mode) [contenteditable="true"] { outline: none !important; }
+  body:not(.edit-mode) .area-box::after { display: none !important; }
+
+  /* Row add controls for tables (edit mode only) */
+  body.edit-mode .spec-table tbody tr { position: relative; }
+  body.edit-mode .spec-table tbody tr .row-ctrl {
+    position: absolute;
+    left: -30px; top: 50%; transform: translateY(-50%);
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+  }
+  body.edit-mode .spec-table tbody tr:hover .row-ctrl { display: flex; }
+  body.edit-mode .row-ctrl button {
+    width: 22px; height: 22px; padding: 0;
+    border: 1px solid #d5d5d5; background: #fff;
+    border-radius: 4px; cursor: pointer;
+    font-size: 12px; line-height: 1;
+    color: #181b1e; font-family: inherit;
+  }
+  body.edit-mode .row-ctrl button:hover { background: #f4f6f8; }
+
+  /* Print / PDF */
+  @media print {
+    .edit-toolbar, .toast, .restore-banner, .del-btn, .row-ctrl, .file-status { display: none !important; }
+    body { padding: 0 !important; }
+    body.edit-mode .area-box::after { display: none !important; }
+    [contenteditable="true"] { outline: none !important; }
+  }
+
+  /* PNG capture mode — hide all edit UI for html2canvas */
+  body.capture-mode .edit-toolbar,
+  body.capture-mode .file-status,
+  body.capture-mode .toast,
+  body.capture-mode .restore-banner,
+  body.capture-mode .del-btn,
+  body.capture-mode .row-ctrl {
+    display: none !important;
+  }
+  body.capture-mode .area-box::after { display: none !important; }
+  body.capture-mode [contenteditable="true"] { outline: none !important; background: transparent !important; }
+
+  /* Capture mode — 주요 색상 요소 강제 주입 (html2canvas 호환) */
+  body.capture-mode .spec-table td.num-cell {
+    background-color: #f37a2e !important;
+    color: #ffffff !important;
+  }
+  body.capture-mode .num {
+    background-color: #f37a2e !important;
+    color: #ffffff !important;
+  }
+  body.capture-mode .spec-table thead th {
+    background-color: #111111 !important;
+    color: #ffffff !important;
+  }
+  body.capture-mode .doc-meta .label.path {
+    background-color: #b5e4a7 !important;
+  }
+  body.capture-mode .tag-gray { background-color: #dadfe2 !important; color: #8796a1 !important; }
+  body.capture-mode .status-tag,
+  body.capture-mode .tag-yellow { background-color: #fbf2dc !important; color: #ff9200 !important; }
+  body.capture-mode .tag-green { background-color: #e1f5ea !important; color: #00bf40 !important; }
+</style>
+</head>
+<body class="edit-mode">
+
+<!-- ═══════════════ EDIT TOOLBAR ═══════════════ -->
+<div class="edit-toolbar" contenteditable="false">
+  <button id="btn-mode" class="active" title="편집 모드 전환 (⌘E)">
+    <span id="mode-icon">✏️</span> <span id="mode-text">편집 중</span>
+  </button>
+  <div class="sep"></div>
+  <button id="btn-add-num" class="edit-only" title="번호 추가">➕ 번호</button>
+  <button id="btn-add-box" class="edit-only" title="빨간 영역 추가">🟥 영역</button>
+  <button id="btn-add-box-blue" class="edit-only" title="파란 영역 추가 (팝업·메뉴)">🟦 영역</button>
+  <div class="sep"></div>
+  <button id="btn-autosave" class="edit-only" title="편집 시 자동으로 파일에 저장">
+    🔄 자동저장 <span id="autosave-status" style="opacity:.6;">OFF</span>
+  </button>
+  <div class="sep"></div>
+  <button id="btn-png" title="페이지 전체를 PNG 이미지로 저장 (Figma 드래그용)">🖼 PNG</button>
+  <button id="btn-print" title="인쇄 / PDF (⌘P)">🖨 인쇄</button>
+  <button id="btn-copy" title="HTML 전체를 클립보드로 복사">📋 복사</button>
+  <button id="btn-save-as" title="다른 파일로 저장 (⌘⇧S)">📁 다른 이름</button>
+  <button id="btn-save" class="primary" title="현재 파일에 저장 (⌘S)">💾 저장</button>
+</div>
+
+<!-- File connection status -->
+<div class="file-status" id="file-status" contenteditable="false">연결된 파일 확인 중…</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Restore banner -->
+<div id="restore-banner" class="restore-banner" contenteditable="false">
+  <div>
+    <div style="font-weight:600;margin-bottom:2px;">이전 편집 내역이 있습니다</div>
+    <div style="color:#8796a1;font-size:11px;" id="restore-time"></div>
+  </div>
+  <button id="btn-restore" class="primary">복원</button>
+  <button id="btn-discard">무시</button>
+</div>
+
+
+<!-- ═══════════════ HEADER META ═══════════════ -->
+<div class="doc-meta">
+  <div class="label chapter">Chapter</div>
+  <div class="value">에디터 &gt; 사이드바</div>
+  <div class="label path">Screen Path</div>
+  <div class="value" style="background:#eef7e8;">홈 &gt; 상세페이지 에디터 &gt; <strong>[사이드바]</strong></div>
+</div>
+
+<!-- ═══════════════ 메인 화면 ═══════════════ -->
+<section class="section">
+  <h2 class="section-title">1. 사이드바 탭 레일 (Desktop · 1300px 이상)</h2>
+  <p class="section-subtitle">에디터 좌측 고정 탭 레일 (원본 64×974). 캔버스 스크롤 · 사이드패널 개폐와 무관하게 항상 고정. 진입 시 <strong>아무 탭도 선택되지 않은 상태가 디폴트</strong>. 콘텐츠 패널 · 페이지 맵 · 옵션 바는 본 가이드 범위 외 (별도 정의).</p>
+
+  <!-- Mockup + overlays -->
+  <div class="mockup-wrap">
+    <div class="mockup-canvas" id="mainMockup">
+      <!-- SVG 재구성 목업 (1440×1024 비율) -->
+      <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAPOAEADASIAAhEBAxEB/8QAHAABAQADAQEBAQAAAAAAAAAAAAIFBgcEAwgB/8QAOhAAAQQBAgUCBAUCBQMFAAAAAQACAwQFBhESITNysRMxBxQiQRUWMlFhI0IXNFOR0URxgQglJoKh/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAEC/8QAFxEBAQEBAAAAAAAAAAAAAAAAAAERIf/aAAwDAQACEQMRAD8A/ZaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgLnMPxPsSMgyJ0dkm4CfIihHkzag2LjOYA70uPj24xt7e3NdGX55p/Jb0tvzx+Tfx8ehx/J/K+t86dvb+twevv/ADstSJa3+f4n2I2T5EaOyTsBBkTQkyYtQbcQnEBd6XHx7cZ29vbmujr883Pkt7u/54/Jv4+fX4fk/lfW+dG/v/W4PX2/nZfoZLCUUT9CTtPhWon6EnafCyq0REBc5h+GFiNkGOOsck7AQZEX48YasGwcJzOG+rwce3Gd/f25LC/ESPOVtVZ0Q3rLXX6L/wAOjjmkeGAQNY4+mH8I3fuNy3kXB242Xk1LesHQmOmjcz0n5u9L67mzPceG9K4RlsZBAIbwuB+27eRWpGbWyzfDCxIyfHDWOSbgJ8ib8mMFWDYuM4nLfV4OPbjG/v7cl0ZcZ0TLmMporNVMTCy5MMjGXGKSeCRofK2R7AHysd9Mbvp+to2ABJ5rM6FF2XM4uAuyFhuNs5CG4+eUS+jI4RvEbiJJNtuLYBzidglJXTVE/Qk7T4VqJ+hJ2nwstLREQYvK4DG5O7HdsttssxxmJsta7NXdwEglpMbm7jcA814rWi9O2cdVoS1LAhqTSzwuZenZI2SRznSOMjXh5Li9xO5O+5WwomjD4/TWKoY2zjq3z4r2uqJMjYkf7bfS9zy5v/1IV47TmDxtqK1jsbDTlii9IGDePiZ9g8DYP23JHFvsSSOZWVRAUT9CTtPhWon6EnafCC0REBERAREQFE/Qk7T4VqJ+hJ2nwgtERAWK1XqHE6XwVjNZu2yrTgG7nHmXH7NaPu4/YBZVaHr3D4PUeAyWqI7JynyeJuQ0mMlEleOUNka+RrR7y7gs33O3DsNjvvYVs+lNQYnVGCr5rC2m2ak43BHJzT92uH2cPYhZVaHoLD4PTmAxuqJLJxZt4mnDdY+UR15ZS2NrJHNPtLuQzfcb8Wx3O22+JUgon6EnafCtRP0JO0+FFWiIgLQq3w7uY/1oMHrrUOLoPnkmjqRNrvZEZHl7g0vjLtuJzjzJ91i9ayTUdcubb1TTw5tSQ2qVuzlZIRWgjEbZYhA4ejIXuDjzO/8AU32+hq8Rt5Fvw9x1jH3H36/4jkpbV6tJL0xYnIeGxTw8QJ2/uIH2B5LUjOtin+Hly+IoM3rrUOUotmjmkqStrsZKY3te0OLYgduJrTyI9lvi5dh4s3PoTOSwZPJSWLvpSUxNO+uWM2buI3yWZXN4gCdy9vM/ZbBo75ZmWdw4/O1HOiIDr2fNxjuY5BnzEn1fffh9gefPnKsbion6EnafCtRP0JO0+FFWiIgxeVwGNyd2O7ZbbZZjjMTZa12au7gJBLSY3N3G4B5r4s0npoU4akuEo2ooC8x/NxCw4F7y954pN3ElziSSeZKzSIMRDpfTUMUkUOnsRHHJsXtbSjAdt7bjbntuV9aeAwVOyyzTwuNrzs34JIqrGObuNjsQNxyKySICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiIC07Mao1ZSu2o6/w7vW6kL3BlsZWpGyRg/v2dIC0bc+ey3Fc9+O96ydK19NY6tZuXc/ZFT5ett6rq4HHOW8RDem0t5kfqViVkcPqjVl27VjsfDu9UqTObxWzlakjI2H+/ZshLhtz5brcVzz4D3rQ0rY01kq1mpe0/ZNQwWS0ytrkB9cu4SR03NbyJ/SuhpSCifoSdp8K1E/Qk7T4UVaIiAtNy2ltV28rLcq/EO7SiL3OggbiqknoNP8AaHOjLiPbmTuVqnxD/MNTUOoeHITwQXqRbjeK0fSafQDXbM9doBLuIc4zsXB2/JZnFW8lY0GaeIsVmy5G9kmDISWmhlWM25h6g2PE54B+lo9iNnFuy1mJrJYnS2q6eUit2viHduQiRr54HYqpGJwP7XObGHDly3B3W5LQshNqOX4fZLFRv48tUhjigu1LbSbYBA9QbPa5jiBzaSOZ2Dj7qtAMyDM1Ibv4lwGBwb8w+bh33b9n3JgTtv8A2g+/MexlG9qJ+hJ2nwrUT9CTtPhRVoiICxX5bwBi9KXD0p2CWaYevCJSHyyOkkILtyN3ucdvbmsqiDEnTGmzC+E6exJieQXs+Tj4XEe24257blf2jprTlC2y3RwGKq2I9+CWGnGx7dxsdiBuORIWVRAUT9CTtPhWon6EnafCC0REBERAREQFE/Qk7T4VqJ+hJ2nwgtERAWinXeVv2rQ0xofKZyjWnfXddFqvXjkkY4teGCR4Lmggji223BW9LiWnfk/8LcJ83+ddvxDJ8P5b+Y4v85L1PR+37b/yrErc/wA95XH2av5o0Rk8HRs2GVm3XW69iOOR54WcfpvJa0kgcW225C3pcS1F8n/hbm/lPzrt+IYzi/MnzHF/nIun632/fb+F21LCCifoSdp8K1E/Qk7T4UVaIiAtF/ImVx9m1+V9b5PB0bNh9l1JtSvYjjkeeJ/B6jCWtJJPDvtuStP+KGaysGrM5Uo5O76TKL96/rSNhaflJCT9LTsd+Aj+duY3JXurWzHh6X4nksjRxTrGWc+erPJE91ptgegwuYdzu0zEM5hxaAQfY6xnWxDQmVv2qp1PrjKZyjWnZYbSNWvXjkkY4OYXmNgLmggHh323AW9LldC5ZZBqOxqB92PIfh+MMkNSZ8Mr7ToXf0mcBB3dIdtgdv35KtHOsR57SNS9YvvykFa9DlG27Mkp+ZYyAOLS8n6Hfrbty2cCPdMXXUlE/Qk7T4VqJ+hJ2nwsqtERB87deC3Vlq2YmywTMdHJG4bhzSNiD/BBXyxtCpjaxr0oRDEZHyloJP1PcXOPP9ySV6UQeWvj6dfIWshDCG2bYYJ38RPHwAhvLfYbAn2X9nx9OfI1chLCHWqrZGQSbn6A/biG3sd+Ee/7L0ogKJ+hJ2nwrUT9CTtPhBaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgLD6y1DT0xgpcpbjlmIe2KCvEN5LEzzwsjYPu5xO3/6swuE631De1LqDT+pMXBl8Xi6GQkpVr1mhBaqunfN8uJvT9drwQ4OaCQdgdwAVZNS3HXtG6hp6nwUWUqRywHidFYrzDaWvMw7PjePs4EeD7FZhcW0Nmvy3rTO5DKXsllaGSvxULGSr4llWhHda70iSPVc7cnhYZAA3cDffkV2lLMJdFE/Qk7T4VqJ+hJ2nwoq0REBc5h+GFiNkGOOsck7AQZEX48YasGwcJzOG+rwce3Gd/f25LoVv1PlZRFK2KQsIY9w3DXbciR9+a5RpXI2pshp6tAzMQZCSzMy/et5YzV7IrudHPwR8Z34nj6d449gQRttsrErYJPhrVfk5P8A33JjBy5D8Slw39MwPscfqb8Rbx8BeA7g323W9rQc/kdQnWeOmruq12wiw2vj32jtkGjhD3yPALYi0cLmAhxO7geHflvVaR0teOV8Zjc9gcWFwJaSPbccj/4SkfRRP0JO0+FaifoSdp8KKtERB87VeC1XkrWoY54JGlskcjQ5rwfcEHkQsTHpHSkcjZI9MYVj2kOa5tCIEEexB4VmkQYWTSOlJJHSSaYwr3uJc5zqERJJ9yTwrLVa8FWvHWqwxwQRtDY442hrWAewAHIBfREBRP0JO0+FaifoSdp8ILREQEREBERAUT9CTtPhWon6EnafCC0REBatrfXGO0nYrQXcflLbrDC9ppwteGgHb6t3DZbSuZ4XT+ns78TtezZ/C4zKOr2qUcLr1Vk3pM+UjcWt4weEbknYfcqxKzmkviHg9RZOPGxVcnjrUzHSVmX63pCwGfr9NwJa4t3G433AO+2y3BcGpUKOJ/8AUhWxuKpVqFKO+HMr1omxxtLsXNxENaABvsN/32XeUsJRRP0JO0+FaifoSdp8KKtERAWjZH4YafyuqsrnMzLevxZF8Uj8c+ctqtfHE2MP4G7cTtmjYuJ2+y1r4p5W3i9bPsx3srUZNUrVhFA+PhdtJKfVA+ZY4D+psS5o24N99l8TfdX09gI7WVy7Kv4LknR2I7TmGxZbJX9FxMErweTpQA5x9jyWpGbW56O+HmG01l7mSint5CaaSN9d19/rSVAyN0YbG8ji24XubzJO2wW4rm+kZspYZqZk7IXte+nvJPkpashlNKqXNLmMJYPc8QO5JI2HuvRp0ZGvr6jBI70qkmNsulbHnbOQjdIJIAwEzABrtjJttzI33UsWOgKJ+hJ2nwrUT9CTtPhRVoiIC82Mo1cbRjpUoRDXj34GAk7bkk8zz9yV6UQY+TCYiV1wz46vOLkzZ7DZmeo18jWNYHbO3AIaxo5fspp4DBU7LLNPC42vOzfgkiqsY5u42OxA3HIrJIgKJ+hJ2nwrUT9CTtPhBa/jiR7NLv8Atsv6iCeN3+k//cf8pxu/0n/7j/lUiCeN3+k//cf8pxu/0n/7j/lUiD+NJPu0t/77KZ+hJ2nwrUT9CTtPhBaIiAiLmlbO651Fi72pMNkMJisLDNZZXimoSWrErIHvY57tpGgEljtmgftzKuJrpf32Rfnr4d631FrnV9KWWOvPkKkL5KTo7MtWB7OKAytlYx8jXODJQRsd9+ThuAF+hR7c0swl0UT9CTtPhWon6EnafCirRF4dQZWpg8Lby14v+XqxmR4Y3ie79mtH3cTsAPuSEHuX5yxVaCjNc098RMrncVUxdq0MVWxtO3wymWZ8otmWJhDyOPZrfYcPMbkruEGq8RNUw1tskggzEbpK73N2DWtiMruPn9OzWnf+eSx0eu6ctE2G4u/A8upuiitBkbpobM7YmSt4XO5bkktOzhsNwNwtTjNaL8Jp8rnNeVrTqHFjsHQtVfxVlJ9SO+6Z8TmuET2tIk2Y7j2BG43B5hdoWtt1hUdmG478OyAa+7LQZaIi9J08cT5XN/Xx/pjdzLdtwvMdbsZi8BdOAykwzkEMlcVzC5okkjdJ6RL3tO4a1x322/nfkperONtUT9CTtPhY/AZcZb5/as+uadt1Yh7gSSGtdvy9v1bbc/ZZCfoSdp8KKta5rvAXtRwYyhXyDqFSK8y1bli4TKREC+MMD2OYf6ojJ4hts0+62NEHPsPoXJU7FClauw3sXRv3Jo3Su4ZpIbELg5rmsY1gIkkfybsOHbbb2X0u6Kvw4xobfflbUUmOr1+ONsXp1a9uOU789nP4QS53LfhGzR999RXUxqX5PlbmGXhlHPrxZGfJR1vQAPqyQSQkF+/6dpSfb32Xgo6It3dNadrZTIy07GIxlZlWKFrT8rcYxoMxduQ8jbhDeTdi8Hi4uW+ImmMDo/HXsecwbzW8VnJPnjc3bZ7SyMcWwJ23LTyKzc/Qk7T4VqJ+hJ2nwoq0REBERAREQFE/Qk7T4VqJ+hJ2nwgtERARFovxR+IVbSElXFRVJJstko3ik+V8cNZjhyBklkc1o58+Ebk/tzCSaN6RcX0PqO38OcxW0Jqi5YzkmRsRvo3ILLLEwfKxhe2SLi9RrPU4yH7EbFdoVsxJdFE/Qk7T4VqJ+hJ2nwoq0ReHUGVqYPC28teL/l6sZkeGN4nu/ZrR93E7AD7khB7lyJ9XX+W+Jl/E5mrUnwlmsWWoXCR1FtMu2Y6In/qifU4twBsG/sCuh0tT4u5Fgpa5mczNtLqh4NttozIQ/n9JABG378ljY9dYyxSyFmm0WDSycOPc1sgHH6k0cQlafuzieeY5EscN+Ss4lfD4U6HOjMVYju3xlcnZlBlvOjDXujYxscTP32axjfv7krc1ptj4g0Kuo7WKuUJKsFbdr7s1ys2IPG5IP9XcfTwu2/Vs7m0bL0HW+MixOmL9wCt+YGxOYx0gPoB8XHxOO36Q4sZxchu9v7pdJjalE/Qk7T4XhwmVbk5MixsJi+Suuqkl2/GWta7i/j9Xt/C90/Qk7T4UVa1zXeAvajgxlCvkHUKkV5lq3LFwmUiIF8YYHscw/wBURk8Q22afdbGiDQMJofJULeOq2rle/i8fkLk8Zn29WSGxC7iY5jY2sBEkj+Q2bw7bbfpWvzae1bNnIy/EW4ale8xsIhr0nxtqx2WyMY0una4NIYw7cA4T7AkBdfRXUxzrPYDLR60tZPHYq66HZstd1Z8T2eu5jmSvMcs7WteWkN4mt3IJ5818M1p7PQaU09TxuEYbTcZHSyhrNge4MZG0CI+rI3jj4i/+4/8AnddMRNMar8Msfk8dg7UeWhsRWZbj5dp4oWOLS1oHKKR7SOW25O/L22232efoSdp8K1E/Qk7T4RVoiKAiIgIiICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiICIiAiIgKJ+hJ2nwrUT9CTtPhBaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiICIiAiIgKJ+hJ2nwrUT9CTtPhBaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiICIiAiIgKJ+hJ2nwrUT9CTtPhBaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiICIiAiIgKJ+hJ2nwrUT9CTtPhBaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiICIiAiIgKJ+hJ2nwrUT9CTtPhBaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiICIiAiIgKJ+hJ2nwrUT9CTtPhBaIiAiIgIiICifoSdp8K1E/Qk7T4QWiIgIiICIiAon6EnafCtRP0JO0+EFoiICIiAiIgKJ+hJ2nwrUT9CTtPhBaIiAiLUdQ68x9HInC4SnZ1FnByNGhsRD/M0h+iEdx3/goNuRajp7XmPu5KPB5yrNp3UDhyx90jaX+YZR9Eo7Tv+4C25AUT9CTtPhWon6EnafCC0REBcLzeO1T8P85ks5j4YsbRsTunks0o5JsbJufezV5yQu223liJH7hdku5zDUn2I7WUpxS1onTTxumbxxsa3iLi3ffYN5+3svm/UWBjpC7Pl6VesbD6olnmETTK1xY5gLttzxNI5fsrLiXrj+Fxuq9f5ylmMjEzJUqtpk8VjIV5K2PjAP8A0tbcSTO23AlmIGx5Bd0WPlzWJhkvMnyFeH5BrH23Su4GQteCWlzjsNjt+6qHL4ud9Jte9BP88xz6roncbZWt2Li1w3BA3H3S3STHuUT9CTtPhWon6EnafCirREQcq+JmBz+Q/M9uaHIzVo6M/wCGGvNC1jGuqBrwW8Jkc4v9Qbb+zhsrweNyb6UeTpYxmTENvN031JJGs2M9slsn1ctgIy0/faQ7b8wepIrqY5TjtP5GK5kcdDtkLOJbhZHse/hFv0IzxDd3Lc8PEN+XEBuR7j24LC38ZrfC2bs87DckydkUOJjoqgke14aC1u/EQd3cyOInb9z0lE0wUT9CTtPhWon6EnafCirREQEREBERAUT9CTtPhWon6EnafCC0REBEXJ9afETMyWr0GmPl6mOoXG46XJTVX2pbNwn/AC9aBhHG4exLiB7/ALbqyaluOsIuUaN+IWbhlpDVJrWsbcunGtvRVX1Zqdz7QWYHE8Jdy2c0kcxv77rq6WYS6KJ+hJ2nwrUT9CTtPhRVoiIC5NoazVxGPz2iciYa2ocdeuXcd8xEHvstlc98VmJuxL3fWWkN3III+66VYzeGr5JmNny9CK88tDKz7LGyuJ9gGk7nf7clg9VQaB1Hg6lzUzcNZx8ruGrPeLYxxHlsxztiCdvYe+ysSud5ijTZpHD6Ax9qXI6pz1+rkcnJI4meEtdHLPYlBAMYAjDA1wB9gASCu3rV9OUND6SjyNXDVsXh2VGxvvPDRGGhwJYXyO9xsD7krJ4nUmncvZNXE5/FZCcMLzFWuRyvDRsCdmknbmOf8pSMqon6EnafCtRP0JO0+FFWiIg1zLY69mdS1GT046+Jx0zLRmc5pktzNG7GtA5tYwniJOxLmgAcO5OnaXw+WbpbT+UrV35wNo3KxqWHxRiL13R8JHIAsb6TmnfiftIdifZdURXUxyith5K1bUmBsz25ZY6OKrGxXqvsPc+OI/XwDmQS3nzHutq0xmMxPlWwZGS1NFI0hv8A8fnqBrvfcyPkcNtgRttzJHNbaiaYKJ+hJ2nwrUT9CTtPhRVoiICIiAiIgKJ+hJ2nwrUT9CTtPhB//9k=" alt="사이드바 탭 레일 (64×974 원본 · Figma export)" class="mockup-image" />
+
+      <!-- Area boxes + 번호 원 (% 좌표 · 64×974 이미지 기준) -->
+      <!-- ① 탭 레일 전체 -->
+      <div class="area-box" style="left: 2%; top: 0.3%; width: 96%; height: 99.4%;">
+        <div class="num" style="background-color:#f37a2e;color:#fff;font-weight:700;">1</div>
+      </div>
+
+      <!-- ② 탭 선택/Hover 하이라이트 위치 (예시 : 업로드 탭 · y=64~128) -->
+      <div class="area-box" style="left: 6%; top: 7.1%; width: 88%; height: 5.8%;">
+        <div class="num" style="background-color:#f37a2e;color:#fff;font-weight:700;">2</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spec table -->
+  <table class="spec-table">
+    <thead>
+      <tr>
+        <th class="num-col">Num.</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num-cell" style="background-color:#f37a2e !important;color:#fff;font-weight:700;text-align:center;">—</td>
+        <td>
+          <span class="cat">[탭 레일 공통]</span>
+          <ul>
+            <li>화면명 : 에디터 사이드바 — 탭 레일</li>
+            <li>너비 : 64px 고정</li>
+            <li>높이 : 에디터 콘텐츠 영역 전체 (상단바 50px 제외)</li>
+            <li>탭 레일은 에디터 진입 시 항상 노출 · 캔버스 스크롤 · 다른 패널 개폐와 무관하게 고정</li>
+            <li>진입 디폴트 : 아무 탭도 선택되지 않은 상태</li>
+            <li>탭 구성 (총 10개 · 2개 그룹으로 세로 스택)
+              <ul>
+                <li>상단 그룹 (8개) : 템플릿 · 업로드 · 텍스트 · 페이지 · 요소 · 북마크 · (구분선) · AI이미지 · AI기능</li>
+                <li>하단 그룹 (2개) : 레이어 · 가이드</li>
+              </ul>
+            </li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td class="num-cell" style="background-color:#f37a2e !important;color:#fff;font-weight:700;text-align:center;">1</td>
+        <td>
+          <span class="cat">[① 탭 레일 · 탭 1개 단위]</span>
+          <ul>
+            <li>크기 : 64×64 · 세로 스택 · 아이콘 18×18 상단 + 캡션 11px Medium 하단</li>
+            <li>아이콘 · 캡션 색상 (기본) : <code>text/default/heading</code> <code>#3d464e</code></li>
+            <li>탭 클릭 시 해당 탭의 콘텐츠 패널이 우측에 확장 (콘텐츠 패널 사양은 별도 가이드)</li>
+            <li>탭별 진입 기능 (정책서 기준 · 탭 레일 가이드 범위)
+              <ul>
+                <li>각 탭별 기능은 별도 정의</li>
+              </ul>
+            </li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td class="num-cell" style="background-color:#f37a2e !important;color:#fff;font-weight:700;text-align:center;">2</td>
+        <td>
+          <span class="cat">[② 탭 선택 · Hover 상태]</span>
+          <ul>
+            <li>디폴트 (선택 안됨) : 별도 배경 없음</li>
+            <li>Hover : hover 효과 적용</li>
+            <li>Selected : selected 효과 적용 / 해당 탭의 상세 패널이 출력됨</li>
+            <li>한 번에 1개 탭만 선택 가능 (라디오 동작)</li>
+            <li>해제 : 콘텐츠 패널 X 버튼 클릭 또는 동일 탭 재클릭 시 선택 해제 + 디폴트 상태로 복귀</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td class="num-cell" style="background-color:#f37a2e !important;color:#fff;font-weight:700;text-align:center;">—</td>
+        <td>
+          <span class="cat">[추가 정책 · 업로드 진행 배지]</span>
+          <ul>
+            <li>트리거 : 사용자가 업로드 탭에서 이미지 업로드 시작 시</li>
+            <li>표기 위치 : 탭 레일의 업로드 아이콘 우상단에 오버레이 (20×20 · 배경 <code>#0a8ff5</code> · 테두리 1.5px <code>#0a8ff5</code> · radius 100px)</li>
+            <li>배지 내부 아이콘 : 위 화살표 (Icons 10×14 · 흰색)</li>
+            <li>애니메이션 : Lottie · 업로드 중 반복 재생 · 업로드 완료 시 자동 숨김 처리</li>
+            <li>다른 탭 전환 · 콘텐츠 패널 닫힘 상태에서도 배지는 유지됨</li>
+            <li>Lottie 리소스 : <a href="https://lottiefiles.com">https://lottiefiles.com</a> (official@studiolab.ai 계정으로 로티 사이트 접근)</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td class="num-cell" style="background-color:#f37a2e !important;color:#fff;font-weight:700;text-align:center;">—</td>
+        <td>
+          <span class="cat">[추가 정책 · 스크롤 동작]</span>
+          <ul>
+            <li>탭 레일의 높이가 뷰포트에서 사용 가능한 세로 공간을 초과할 경우, 탭 레일 내부에서 수직 스크롤 발생</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td class="num-cell" style="background-color:#f37a2e !important;color:#fff;font-weight:700;text-align:center;">—</td>
+        <td>
+          <span class="cat">[추가 정책 · 다크모드]</span>
+          <ul>
+            <li>탭 레일 배경 : <code>#181b1e</code> · 우측 보더 <code>#242a2e</code></li>
+            <li>탭 아이콘 · 텍스트 (디폴트) : <code>#eef0f2</code></li>
+            <li>탭 아이콘 · 텍스트 (Selected) : <code>#0a8ff5</code> (라이트 모드와 동일)</li>
+            <li>Selected 탭 배경 : <code>surface/tertiary/strong</code> 다크 모드 토큰 <code>#242a2e</code></li>
+            <li>구분선 : <code>#242a2e</code></li>
+            <li>다크모드 전환 트리거 · 저장 범위는 별도 정의 필요</li>
+          </ul>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+
+
+
+
+<div class="foot">
+  Figma 원본 : 3.사이드바 · node 8287:98457 &nbsp;|&nbsp; 참조 : <a href="https://www.notion.so/studiolabai/GENCY-229094555ffe80b68a9ada0ac454f9f3">GENCY 정책서</a> · 상세페이지 에디터 정책 정의서 &nbsp;|&nbsp; 문서 v0.5 (문구 업데이트)
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const STORAGE_KEY = 'gency_editor_header_spec_draft';
+  const SAVE_INTERVAL = 2000;
+  const FILE_NAME = 'gency_editor_header_spec.html';
+
+  // ══════════ Editable selectors ══════════
+  const EDITABLE_SELECTORS = [
+    '.doc-meta .value',
+    '.section-title',
+    '.section-subtitle',
+    '.spec-table td',
+    '.matrix td',
+    '.matrix th',
+    '.popup-card h4',
+    '.popup-card .meta',
+    '.popup-card .desc',
+    '.popup-card .input-guide',
+    '.popup-card .input-box',
+    '.popup-card .row',
+    '.mockup-canvas',
+    '.foot'
+  ];
+
+  // ══════════ Toast ══════════
+  const toastEl = document.getElementById('toast');
+  function toast(msg, ms) {
+    ms = ms || 2000;
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toastEl.classList.remove('show'), ms);
+  }
+
+  // ══════════ Edit mode toggle ══════════
+  const btnMode = document.getElementById('btn-mode');
+  const modeIcon = document.getElementById('mode-icon');
+  const modeText = document.getElementById('mode-text');
+
+  function setEditMode(on) {
+    document.body.classList.toggle('edit-mode', on);
+    btnMode.classList.toggle('active', on);
+    modeIcon.textContent = on ? '✏️' : '👁';
+    modeText.textContent = on ? '편집 중' : '보기 모드';
+    applyEditable(on);
+  }
+
+  function applyEditable(on) {
+    const nodes = document.querySelectorAll(EDITABLE_SELECTORS.join(','));
+    nodes.forEach(n => {
+      if (on) n.setAttribute('contenteditable', 'true');
+      else n.removeAttribute('contenteditable');
+    });
+  }
+
+  btnMode.addEventListener('click', () => {
+    const nowOn = !document.body.classList.contains('edit-mode');
+    setEditMode(nowOn);
+  });
+
+  // ══════════ Delete buttons on markers ══════════
+  function injectDeleteButtons() {
+    document.querySelectorAll('.num, .area-box').forEach(el => {
+      if (el.querySelector('.del-btn')) return;
+      const btn = document.createElement('span');
+      btn.className = 'del-btn';
+      btn.textContent = '×';
+      btn.contentEditable = 'false';
+      btn.title = '삭제';
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        el.remove();
+        scheduleSave();
+      });
+      el.appendChild(btn);
+    });
+  }
+
+  // ══════════ Drag & resize for markers ══════════
+  function initDrag(el) {
+    el.addEventListener('mousedown', e => {
+      if (!document.body.classList.contains('edit-mode')) return;
+      if (e.target.classList.contains('del-btn')) return;
+
+      const rect = el.getBoundingClientRect();
+      const parent = el.offsetParent;
+      const parentRect = parent.getBoundingClientRect();
+
+      // Check if mouse is on resize handle (bottom-right 12px corner of area-box)
+      const isBox = el.classList.contains('area-box');
+      const onResize = isBox
+        && e.clientX > rect.right - 12
+        && e.clientY > rect.bottom - 12;
+
+      e.preventDefault();
+      el.classList.add('dragging');
+
+      // Normalize positioning: convert right/bottom to left/top using current rect
+      if (el.style.right) {
+        el.style.left = (rect.left - parentRect.left) + 'px';
+        el.style.right = '';
+      }
+      if (el.style.bottom) {
+        el.style.top = (rect.top - parentRect.top) + 'px';
+        el.style.bottom = '';
+      }
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startLeft = parseFloat(el.style.left) || (rect.left - parentRect.left);
+      const startTop = parseFloat(el.style.top) || (rect.top - parentRect.top);
+      const startW = el.offsetWidth;
+      const startH = el.offsetHeight;
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (onResize) {
+          el.style.width = Math.max(20, startW + dx) + 'px';
+          el.style.height = Math.max(16, startH + dy) + 'px';
+        } else {
+          el.style.left = (startLeft + dx) + 'px';
+          el.style.top = (startTop + dy) + 'px';
+        }
+      }
+      function onUp() {
+        el.classList.remove('dragging');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        scheduleSave();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  function initAllMarkers() {
+    document.querySelectorAll('.num, .area-box').forEach(initDrag);
+    injectDeleteButtons();
+  }
+
+  // ══════════ Add marker ══════════
+  function addMarker(type) {
+    const mockupWrap = document.querySelector('.mockup-wrap');
+    if (!mockupWrap) {
+      toast('UI 목업 영역을 찾을 수 없습니다');
+      return;
+    }
+    let el;
+    if (type === 'num') {
+      el = document.createElement('div');
+      el.className = 'num';
+      const existingNums = mockupWrap.querySelectorAll('.num').length;
+      el.textContent = existingNums + 1;
+      el.style.left = '50%';
+      el.style.top = '30px';
+    } else {
+      el = document.createElement('div');
+      el.className = type === 'blue' ? 'area-box blue' : 'area-box';
+      el.style.left = '50%';
+      el.style.top = '38px';
+      el.style.width = '120px';
+      el.style.height = '70px';
+    }
+    mockupWrap.appendChild(el);
+    initDrag(el);
+    injectDeleteButtons();
+    scheduleSave();
+    toast(type === 'num' ? '번호가 추가되었습니다' : '영역 박스가 추가되었습니다');
+  }
+
+  document.getElementById('btn-add-num').addEventListener('click', () => addMarker('num'));
+  document.getElementById('btn-add-box').addEventListener('click', () => addMarker('red'));
+  document.getElementById('btn-add-box-blue').addEventListener('click', () => addMarker('blue'));
+
+  // ══════════ Table row add/remove ══════════
+  function injectRowControls() {
+    document.querySelectorAll('.spec-table tbody tr').forEach(tr => {
+      if (tr.querySelector('.row-ctrl')) return;
+      const ctrl = document.createElement('td');
+      ctrl.className = 'row-ctrl';
+      ctrl.contentEditable = 'false';
+      ctrl.innerHTML = `
+        <button class="row-add" title="아래에 행 추가">+</button>
+        <button class="row-del" title="행 삭제">−</button>
+      `;
+      tr.appendChild(ctrl);
+
+      ctrl.querySelector('.row-add').addEventListener('click', e => {
+        e.stopPropagation();
+        const newTr = document.createElement('tr');
+        newTr.innerHTML = `
+          <td class="num-cell" style="background-color:#f37a2e !important;color:#fff;font-weight:700;text-align:center;" contenteditable="true">—</td>
+          <td contenteditable="true"><span class="cat">[새 항목]</span><ul><li>내용을 입력하세요</li></ul></td>
+        `;
+        tr.parentNode.insertBefore(newTr, tr.nextSibling);
+        injectRowControls();
+        scheduleSave();
+      });
+      ctrl.querySelector('.row-del').addEventListener('click', e => {
+        e.stopPropagation();
+        if (!confirm('이 행을 삭제하시겠습니까?')) return;
+        tr.remove();
+        scheduleSave();
+      });
+    });
+  }
+
+  // ══════════ Save — File System Access API ══════════
+  //
+  // 동작:
+  // - http(s)/localhost 환경: File System Access API → 파일 직접 덮어쓰기
+  // - file:// 환경: 브라우저 보안상 직접 저장 불가 → 다운로드 폴백
+  // - 실패 시 항상 다운로드 폴백
+  //
+  const isFileProtocol = window.location.protocol === 'file:';
+  const isInIframe = window.self !== window.top;
+  const hasFSA = 'showSaveFilePicker' in window && !isFileProtocol && !isInIframe;
+  let fileHandle = null;
+  let autosaveEnabled = false;
+
+  console.log('[SaveDiag]', {
+    protocol: window.location.protocol,
+    hasShowSaveFilePicker: 'showSaveFilePicker' in window,
+    isFileProtocol,
+    isInIframe,
+    hasFSA,
+    userAgent: navigator.userAgent.slice(0, 80)
+  });
+
+  function buildCleanHtml() {
+    const clone = document.documentElement.cloneNode(true);
+    clone.querySelectorAll('.edit-toolbar, #toast, .restore-banner, .file-status, .del-btn, .row-ctrl').forEach(n => n.remove());
+    clone.querySelectorAll('[contenteditable]').forEach(n => n.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.dragging').forEach(n => n.classList.remove('dragging'));
+    const body = clone.querySelector('body');
+    if (body) body.classList.remove('edit-mode');
+    return '<!DOCTYPE html>\n' + clone.outerHTML;
+  }
+
+  function updateFileStatus() {
+    const el = document.getElementById('file-status');
+    if (!el) return;
+    if (isInIframe) {
+      el.innerHTML = '⚠️ Claude artifact 뷰어(iframe)에서는 저장 불가 · 💾 버튼으로 <strong>HTML 다운로드</strong> 후 로컬 브라우저에서 편집하세요';
+      el.classList.remove('connected');
+      return;
+    }
+    if (fileHandle) {
+      el.innerHTML = `📎 연결된 파일 : <strong>${fileHandle.name}</strong> · 저장 시 덮어쓰기`;
+      el.classList.add('connected');
+    } else if (isFileProtocol) {
+      el.innerHTML = `⚠️ <code>file://</code> 환경 · 직접 저장 불가 → 저장 시 다운로드됨 · <a href="#" id="btn-help" style="color:#0a8ff5;">해결 방법</a>`;
+      el.classList.remove('connected');
+      const helpBtn = document.getElementById('btn-help');
+      if (helpBtn) {
+        helpBtn.addEventListener('click', e => {
+          e.preventDefault();
+          alert('브라우저가 로컬 파일의 직접 덮어쓰기를 막고 있습니다.\n\n[해결 방법]\n\n1. 터미널에서 파일이 있는 폴더로 이동\n2. 다음 명령 실행:\n   python3 -m http.server 8765\n3. 브라우저에서 http://localhost:8765/파일명.html 열기\n\nVS Code 사용 시 Live Server 확장으로 우클릭 → Open with Live Server.');
+        });
+      }
+    } else if (hasFSA) {
+      el.textContent = '연결된 파일 없음 · 저장 시 위치 선택';
+      el.classList.remove('connected');
+    } else {
+      el.textContent = '⚠️ 이 브라우저는 직접 저장 미지원 · 저장 시 다운로드됨 (Chrome · Edge 권장)';
+      el.classList.remove('connected');
+    }
+  }
+
+  async function saveToFile(forceDialog) {
+    const html = buildCleanHtml();
+
+    // file:// 또는 API 미지원 → 바로 다운로드
+    if (!hasFSA) {
+      downloadFileFallback(html);
+      return true;
+    }
+
+    try {
+      if (!fileHandle || forceDialog) {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: (fileHandle && fileHandle.name) || FILE_NAME,
+          types: [{
+            description: 'HTML file',
+            accept: { 'text/html': ['.html', '.htm'] }
+          }]
+        });
+        updateFileStatus();
+      }
+
+      let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        perm = await fileHandle.requestPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') {
+          toast('❌ 파일 접근 권한 거부됨 · 다운로드로 전환');
+          setTimeout(() => downloadFileFallback(html), 400);
+          return false;
+        }
+      }
+
+      const writable = await fileHandle.createWritable();
+      await writable.write(html);
+      await writable.close();
+      dirty = false;
+      toast('💾 저장되었습니다 · ' + fileHandle.name);
+      return true;
+    } catch (err) {
+      if (err.name === 'AbortError') return false; // 사용자가 취소
+      console.error('[Save] Direct save failed, falling back to download:', err);
+      toast('⚠️ 직접 저장 실패 · 다운로드로 전환');
+      fileHandle = null;
+      updateFileStatus();
+      setTimeout(() => downloadFileFallback(html), 400);
+      return false;
+    }
+  }
+
+  function downloadFileFallback(html) {
+    try {
+      html = html || buildCleanHtml();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = FILE_NAME;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      dirty = false;
+      toast('💾 다운로드됨 · 원본 파일 위치에 덮어쓰기하세요');
+    } catch (e) {
+      console.error('[Save] Download fallback failed:', e);
+      toast('❌ 저장 실패 · 콘솔을 확인해주세요');
+    }
+  }
+
+  // 클립보드 복사 (최후의 폴백)
+  async function copyHtmlToClipboard() {
+    try {
+      const html = buildCleanHtml();
+      await navigator.clipboard.writeText(html);
+      dirty = false;
+      toast('📋 HTML 전체가 클립보드에 복사됨 · 원본 파일에 붙여넣기');
+    } catch (err) {
+      console.error('[Clipboard] Failed:', err);
+      toast('클립보드 복사 실패 : ' + (err.message || ''));
+    }
+  }
+
+  // Button handlers
+  document.getElementById('btn-save').addEventListener('click', () => saveToFile(false));
+  document.getElementById('btn-save-as').addEventListener('click', () => saveToFile(true));
+  const btnCopy = document.getElementById('btn-copy');
+  if (btnCopy) btnCopy.addEventListener('click', copyHtmlToClipboard);
+
+  // Autosave toggle
+  const btnAutosave = document.getElementById('btn-autosave');
+  const autosaveStatusEl = document.getElementById('autosave-status');
+  btnAutosave.addEventListener('click', async () => {
+    if (!hasFSA) {
+      toast('자동저장은 localhost 또는 https 환경에서만 가능합니다');
+      return;
+    }
+    if (!fileHandle) {
+      toast('먼저 파일을 연결합니다…');
+      const ok = await saveToFile(false);
+      if (!ok) return;
+    }
+    autosaveEnabled = !autosaveEnabled;
+    btnAutosave.classList.toggle('active', autosaveEnabled);
+    autosaveStatusEl.textContent = autosaveEnabled ? 'ON' : 'OFF';
+    autosaveStatusEl.style.opacity = autosaveEnabled ? '1' : '0.6';
+    toast(autosaveEnabled ? '🔄 자동저장 ON · 편집 후 2초마다 파일에 반영' : '자동저장 OFF');
+  });
+
+  let fileSaveTimer;
+  function scheduleFileSave() {
+    if (!autosaveEnabled || !fileHandle) return;
+    clearTimeout(fileSaveTimer);
+    fileSaveTimer = setTimeout(async () => {
+      await saveToFile(false);
+    }, SAVE_INTERVAL);
+  }
+  document.addEventListener('input', scheduleFileSave);
+
+  updateFileStatus();
+
+  // ══════════ Print ══════════
+  document.getElementById('btn-print').addEventListener('click', () => {
+    window.print();
+  });
+
+  // ══════════ Figma Export — Save as PNG ══════════
+  // html2canvas로 전체 페이지를 PNG 이미지로 캡처해서 다운로드.
+  // Figma에 드래그해서 넣으면 편집 가능한 이미지 레이어로 배치됩니다.
+  async function captureAsImage() {
+    if (typeof html2canvas === 'undefined') {
+      toast('❌ html2canvas 라이브러리 로딩 실패 (네트워크 확인)');
+      return;
+    }
+    toast('🖼 이미지 생성 중… 잠시만 기다려주세요', 5000);
+    try {
+      // 편집 UI 일시 숨김
+      document.body.classList.add('capture-mode');
+      // 스타일 적용 대기 (capture-mode CSS가 확실히 반영되도록)
+      await new Promise(r => setTimeout(r, 300));
+
+      const canvas = await html2canvas(document.body, {
+        backgroundColor: '#ffffff',
+        scale: 2, // 레티나 화질
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        imageTimeout: 15000,
+        windowWidth: document.documentElement.scrollWidth,
+        windowHeight: document.documentElement.scrollHeight,
+        // ★ onclone : 캡처 직전 복제된 DOM에 inline style 강제 주입
+        onclone: (clonedDoc) => {
+          // num-cell에 직접 inline style (복제된 DOM에서 한번 더)
+          clonedDoc.querySelectorAll('td.num-cell').forEach(el => {
+            el.setAttribute('style',
+              (el.getAttribute('style') || '') +
+              ';background-color:#f37a2e !important' +
+              ';color:#ffffff !important' +
+              ';font-weight:700' +
+              ';text-align:center' +
+              ';-webkit-print-color-adjust:exact' +
+              ';print-color-adjust:exact'
+            );
+          });
+          // 번호 원
+          clonedDoc.querySelectorAll('.num').forEach(el => {
+            el.setAttribute('style',
+              (el.getAttribute('style') || '') +
+              ';background-color:#f37a2e !important' +
+              ';color:#ffffff !important' +
+              ';border-radius:50%'
+            );
+          });
+          // 테이블 헤더
+          clonedDoc.querySelectorAll('.spec-table thead th, .matrix thead th').forEach(el => {
+            if (el.closest('.spec-table')) {
+              el.setAttribute('style',
+                (el.getAttribute('style') || '') +
+                ';background-color:#111111 !important' +
+                ';color:#ffffff !important'
+              );
+            }
+          });
+          // Screen Path 배경
+          clonedDoc.querySelectorAll('.doc-meta .label.path').forEach(el => {
+            el.setAttribute('style',
+              (el.getAttribute('style') || '') +
+              ';background-color:#b5e4a7 !important'
+            );
+          });
+          // 상태 태그 색상
+          clonedDoc.querySelectorAll('.tag-gray').forEach(el => {
+            el.setAttribute('style',
+              (el.getAttribute('style') || '') +
+              ';background-color:#dadfe2 !important;color:#8796a1 !important'
+            );
+          });
+          clonedDoc.querySelectorAll('.tag-yellow, .status-tag').forEach(el => {
+            if (!el.classList.contains('tag-gray') && !el.classList.contains('tag-green')) {
+              el.setAttribute('style',
+                (el.getAttribute('style') || '') +
+                ';background-color:#fbf2dc !important;color:#ff9200 !important'
+              );
+            }
+          });
+          clonedDoc.querySelectorAll('.tag-green').forEach(el => {
+            el.setAttribute('style',
+              (el.getAttribute('style') || '') +
+              ';background-color:#e1f5ea !important;color:#00bf40 !important'
+            );
+          });
+          // 영역 박스 테두리
+          clonedDoc.querySelectorAll('.area-box').forEach(el => {
+            const isBlue = el.classList.contains('blue');
+            el.setAttribute('style',
+              (el.getAttribute('style') || '') +
+              `;border:1.5px dashed ${isBlue ? '#2d8cde' : '#e74040'}` +
+              ';border-radius:4px'
+            );
+          });
+          // matrix 색상
+          clonedDoc.querySelectorAll('.matrix .yes').forEach(el => {
+            el.setAttribute('style', (el.getAttribute('style') || '') + ';color:#00bf40 !important;font-weight:700');
+          });
+          clonedDoc.querySelectorAll('.matrix .no').forEach(el => {
+            el.setAttribute('style', (el.getAttribute('style') || '') + ';color:#c9c9c9 !important');
+          });
+          clonedDoc.querySelectorAll('.matrix .note').forEach(el => {
+            el.setAttribute('style', (el.getAttribute('style') || '') + ';color:#0a8ff5 !important;font-weight:600');
+          });
+        }
+      });
+
+      document.body.classList.remove('capture-mode');
+
+      canvas.toBlob(blob => {
+        if (!blob) {
+          toast('❌ 이미지 변환 실패');
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = FILE_NAME.replace(/\.html?$/, '') + '.png';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+        toast('🖼 PNG 저장 완료 · Figma에 드래그 또는 Place Image로 넣으세요');
+      }, 'image/png');
+    } catch (err) {
+      document.body.classList.remove('capture-mode');
+      console.error('[PNG] Capture failed:', err);
+      toast('이미지 생성 실패 : ' + (err.message || '알 수 없는 오류'));
+    }
+  }
+  document.getElementById('btn-png').addEventListener('click', captureAsImage);
+
+  // ══════════ Auto save (localStorage + 파일) ══════════
+  let saveTimer;
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      autoSave();          // localStorage (안전망)
+      scheduleFileSave();  // 파일 (자동저장 ON일 때만)
+    }, SAVE_INTERVAL);
+    dirty = true;
+  }
+
+  function autoSave() {
+    try {
+      const data = {
+        html: buildCleanHtml(),
+        time: Date.now()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      // ignore quota errors
+    }
+  }
+
+  // Listen for input changes
+  document.addEventListener('input', scheduleSave);
+
+  // ══════════ Restore ══════════
+  const banner = document.getElementById('restore-banner');
+  const timeEl = document.getElementById('restore-time');
+
+  function checkRestore() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data || !data.html) return;
+      const diff = Date.now() - data.time;
+      const mins = Math.floor(diff / 60000);
+      let label = '방금 전';
+      if (mins >= 60) label = Math.floor(mins / 60) + '시간 전';
+      else if (mins >= 1) label = mins + '분 전';
+      timeEl.textContent = label + ' 저장됨';
+      banner.classList.add('show');
+    } catch (e) {}
+  }
+
+  document.getElementById('btn-restore').addEventListener('click', () => {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!data || !data.html) return;
+      // Parse saved HTML and replace current body content
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(data.html, 'text/html');
+      const savedBody = doc.querySelector('body');
+      if (!savedBody) return;
+      // Keep edit toolbar + toast + banner; replace the rest
+      const keepers = document.querySelectorAll('.edit-toolbar, #toast, .restore-banner');
+      const currentBody = document.body;
+      // Clear body
+      Array.from(currentBody.children).forEach(c => {
+        if (!c.classList.contains('edit-toolbar')
+          && c.id !== 'toast'
+          && c.id !== 'restore-banner') {
+          c.remove();
+        }
+      });
+      // Append restored content
+      Array.from(savedBody.children).forEach(c => {
+        currentBody.appendChild(c);
+      });
+      banner.classList.remove('show');
+      initAllMarkers();
+      injectRowControls();
+      applyEditable(document.body.classList.contains('edit-mode'));
+      toast('🔄 이전 편집 내역이 복원되었습니다');
+    } catch (e) {
+      toast('복원에 실패했습니다');
+    }
+  });
+
+  document.getElementById('btn-discard').addEventListener('click', () => {
+    localStorage.removeItem(STORAGE_KEY);
+    banner.classList.remove('show');
+  });
+
+  // ══════════ Keyboard shortcuts ══════════
+  document.addEventListener('keydown', e => {
+    const mod = e.metaKey || e.ctrlKey;
+    // Cmd/Ctrl + Shift + S → Save As (다른 이름으로)
+    if (mod && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+      e.preventDefault();
+      saveToFile(true);
+      return;
+    }
+    // Cmd/Ctrl + S → Save (현재 파일에 덮어쓰기)
+    if (mod && e.key === 's') {
+      e.preventDefault();
+      saveToFile(false);
+      return;
+    }
+    // Cmd/Ctrl + P → print
+    if (mod && e.key === 'p') {
+      e.preventDefault();
+      window.print();
+    }
+    // Cmd/Ctrl + E → toggle mode
+    if (mod && e.key === 'e') {
+      e.preventDefault();
+      btnMode.click();
+    }
+  });
+
+  // ══════════ Warn before unload if unsaved ══════════
+  let dirty = false;
+  document.addEventListener('input', () => { dirty = true; });
+  window.addEventListener('beforeunload', e => {
+    if (!dirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  // ══════════ Init ══════════
+  applyEditable(true);
+  initAllMarkers();
+  injectRowControls();
+  checkRestore();
+
+  // Welcome toast
+  setTimeout(() => toast('💡 더블클릭으로 텍스트 편집 · 드래그로 번호·영역 이동 · ⌘S로 저장', 4000), 300);
+})();
+</script>
+
+
+
+</body></html>
